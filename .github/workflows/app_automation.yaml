@@ -95,36 +95,10 @@ jobs:
       #     ref: main
       #     path: ${{ github.event.inputs.targetrepo }}  # This makes sure it's checked out into the correct directory
 
-      # - name: Set up global Git config
-      #   run: |
-      #     # Configure user name and email globally for git
-      #     git config --global user.name "Prayankag"
-      #     git config --global user.email "prayanka.gochipatula@valuemomentum.com"
-
-      #     # Add the target repository to the safe directory list
-      #     git config --global --add safe.directory "${{ github.workspace }}/${{ github.event.inputs.targetrepo }}"
-
       - name: List files in the app repo
         run: |
           echo "Listing files in the app repo"
           ls -R .  # List all files in the current directory (root of the checked-out repo)
-
-      # - name: Debug Git fetch step
-      #   run: |
-      #     # Check git remote and branch information
-      #     git remote -v
-      #     git branch -a
-      #     git status
-
-      #     # Ensure the branch exists in the remote repository
-      #     echo "Checking the existence of the branch on the remote..."
-      #     git ls-remote --heads https://github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }} main
-
-      #     # Retry fetching from remote with more verbosity for debugging
-      #     for i in {1..3}; do
-      #       echo "Attempt $i: Fetching from remote..."
-      #       git fetch --all --verbose && break || sleep 10
-      #     done
 
       - name: List files in the app repo's workflows directory
         run: |
