@@ -72,6 +72,21 @@ jobs:
           token: ${{ secrets.GIT_PAT }}  # Personal Access Token (PAT)
           ref: main
           
+      - name: Clone the target repository
+        run: |
+          # Ensure that git is available
+          git --version
+
+          # Clone the target repository into the directory you want
+          git clone https://github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git
+          
+          # Navigate into the cloned repository
+          cd ${{ github.event.inputs.targetrepo }}
+          
+          # List the contents of the cloned repository
+          echo "Contents of the cloned repository:"
+          ls -R .    
+          
       - name: Checkout the target repository
         uses: actions/checkout@v2
         with:
