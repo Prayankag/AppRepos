@@ -72,36 +72,32 @@ jobs:
           token: ${{ secrets.GIT_PAT }}  # Personal Access Token (PAT)
           ref: main
           
-      - name: Set global Git config and handle safe directory
-        run: |
-          # Override HOME to ensure global git config is applied correctly in the current job's temporary home directory
-          export HOME="/home/runner/work/_temp/${{ github.run_id }}"
-          
-          # Create the necessary directory to avoid "No such file or directory" error
-          mkdir -p $HOME
-
-          # Set up Git user and email globally
-          git config --global user.name "nareshreddivari"
-          git config --global user.email "naresh.reddivari@valuemomentum.com"
-          
-          # Add the repository directory to the safe directory list
-          git config --global --add safe.directory "/home/runner/work/_temp/${{ github.run_id }}/AppRepos/AppRepos/${{ github.event.inputs.targetrepo }}"
-
-          # Debug: Show git global configuration
-          git config --list
-
-      - name: List files in the app repo after checkout
-        run: |
-          echo "Listing files in the app repo"
-          ls -R .  # List all files in the current directory (root of the checked-out repo)
-          
-      - name: Checkout application repo (target repo)
+      - name: Checkout the target repository
         uses: actions/checkout@v2
         with:
           repository: ${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}
           token: ${{ secrets.GIT_PAT }}
-          path: ${{ github.event.inputs.targetrepo }}
           ref: main
+          path: ${{ github.event.inputs.targetrepo }}  # This makes sure it's checked out into the correct directory
+
+      - name: Set up global Git config
+        run: |
+          # Configure user name and email globally for git
+          git config --global user.name "nareshreddivari"
+          git config --global user.email "naresh.reddivari@valuemomentum.com"
+
+          # Add the target repository to the safe directory list
+          git config --global --add safe.directory "${{ github.workspace }}/${{ github.event.inputs.targetrepo }}"
+
+      - name: List files in the app repo
+        run: |
+          echo "Listing files in the app repo"
+          ls -R .  # List all files in the current directory (root of the checked-out repo)
+          
+      - name: List files in the app repo after checkout
+        run: |
+          echo "Listing files in the app repo"
+          ls -R .  # List all files in the current directory (root of the checked-out repo)
 
       - name: Debug Git fetch step
         run: |
@@ -118,20 +114,6 @@ jobs:
           for i in {1..3}; do
             echo "Attempt $i: Fetching from remote..."
             git fetch --all --verbose && break || sleep 10
-          done
-
-
-      - name: Debug Git fetch step
-        run: |
-          echo "Checking Git repository access"
-          git remote -v
-          git branch -a
-          git status
-          
-          # Retry fetch in case of transient network issues
-          for i in {1..3}; do
-            echo "Attempt $i: Fetching from remote..."
-            git fetch --all && break || sleep 10
           done
 
       - name: List files in the app repo's workflows directory
