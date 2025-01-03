@@ -83,8 +83,8 @@ jobs:
       - name: Set up global Git config
         run: |
           # Configure user name and email globally for git
-          git config --global user.name "nareshreddivari"
-          git config --global user.email "naresh.reddivari@valuemomentum.com"
+          git config --global user.name "Prayankag"
+          git config --global user.email "prayanka.gochipatula@valuemomentum.com"
 
           # Add the target repository to the safe directory list
           git config --global --add safe.directory "${{ github.workspace }}/${{ github.event.inputs.targetrepo }}"
