@@ -34,10 +34,12 @@ jobs:
           
           if [ "$repo_exists" != "200" ]; then
             echo "Repository doesn't exist. Creating new repository..."
+            
+            # Creating new repository via GitHub API
             response=$(curl -s -w "%{http_code}" -o response.json -X POST https://api.github.com/orgs/${{ github.event.inputs.orgname }}/repos \
             -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
             -d '{
-              "name": "dotnet",
+              "name": "${{ github.event.inputs.targetrepo }}",
               "visibility": "public"
             }')
             
@@ -48,26 +50,15 @@ jobs:
             
             # Check if the creation was successful
             if [ "$response" -eq "201" ]; then
-              echo "Repository dotnet created successfully."
+              echo "Repository ${{ github.event.inputs.targetrepo }} created successfully."
             else
               echo "Failed to create repository. Please check the error details."
               cat response.json
             fi
           else
-            echo "Repository dotnet already exists."
+            echo "Repository ${{ github.event.inputs.targetrepo }} already exists."
           fi
-          #   # Create a new repository in the organization
-          #   curl -X POST https://api.github.com/orgs/${{ github.event.inputs.orgname }}/repos \
-          #   -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
-          #   -d '{
-          #     "name": "${{ github.event.inputs.targetrepo }}",
-          #     "visibility": "public"
-          #   }'
-        
-          #   echo "Repository ${{ github.event.inputs.targetrepo }} created successfully."
-          # else
-          #   echo "Repository ${{ github.event.inputs.targetrepo }} already exists."
-          # fi
+
       - name: Checkout AppRepos
         uses: actions/checkout@v2
         with:
@@ -187,6 +178,7 @@ jobs:
           
           git diff --cached --quiet || git commit -m "Added application code from App repo"
           git push origin main || echo "No changes to push."      
+
       - name: Trigger pipeline in the application repo
         run: |
           echo "Triggering workflow in target application repo."
