@@ -25,10 +25,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout AutomationRepos
+      - name: Checkout AppRepos
         uses: actions/checkout@v2
         with:
-          repository: ${{ github.event.inputs.orgname }}/AutomationRepos
+          repository: ${{ github.event.inputs.orgname }}/AppRepos
           token: ${{ secrets.GIT_PAT }}  # Personal Access Token (PAT)
           ref: main
 
