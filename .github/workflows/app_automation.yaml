@@ -37,12 +37,12 @@ jobs:
             
             # Creating new repository via GitHub API
             response=$(curl -s -w "%{http_code}" -o response.json -X POST https://api.github.com/orgs/${{ github.event.inputs.orgname }}/repos \
+            -H "Accept: application/vnd.github.v3+json" \
             -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
             -d '{
-              "name": "${{ github.event.inputs.targetrepo }}",
-              "visibility": "public"
+              "name":"Hello-World","description":"This is your target repository","homepage":"https://github.com","private":false,"has_issues":true,"has_projects":true,"has_wiki":true}'
             }')
-            
+
             # Print the HTTP response code and body for debugging
             echo "Response Code: $response"
             echo "Response Body:"
