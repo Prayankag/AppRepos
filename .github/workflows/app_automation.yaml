@@ -64,14 +64,14 @@ jobs:
           else
             echo "Repository ${{ github.event.inputs.targetrepo }} already exists."
           fi
-          
+
       - name: Checkout AppRepos
         uses: actions/checkout@v2
         with:
           repository: ${{ github.event.inputs.orgname }}/AppRepos
           token: ${{ secrets.GIT_PAT }}  # Personal Access Token (PAT)
           ref: main
-          
+
       - name: Clone the target repository
         run: |
           # Ensure that git is available
@@ -85,15 +85,7 @@ jobs:
           
           # List the contents of the cloned repository
           echo "Contents of the cloned repository:"
-          ls -R .    
-          
-      # - name: Checkout the target repository
-      #   uses: actions/checkout@v2
-      #   with:
-      #     repository: ${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}
-      #     token: ${{ secrets.GIT_PAT }}
-      #     ref: main
-      #     path: ${{ github.event.inputs.targetrepo }}  # This makes sure it's checked out into the correct directory
+          ls -R .
 
       - name: List files in the app repo
         run: |
@@ -132,7 +124,9 @@ jobs:
           git add .github/workflows/${{ github.event.inputs.applicationtype }}.yaml
           
           git diff --cached --quiet || git commit -m "Added ${{ github.event.inputs.applicationtype }}.yaml from App repo"
-          git push origin main || echo "No changes to push."
+          
+          # Use PAT for git push
+          git push https://${{ secrets.GIT_PAT }}@github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git main || echo "No changes to push."
 
       - name: Copy application code to the app repo (based on application type)
         run: |
@@ -147,7 +141,7 @@ jobs:
             # Debug: List contents of the current directory
             echo "Listing contents of the current directory:"
             ls -l
-      
+          
             # Ensure you're in the correct directory (AppReposRepos is already included in GITHUB_WORKSPACE)
             cd $GITHUB_WORKSPACE  # No need to go into AppReposRepos again since it's already in the path
       
@@ -168,22 +162,22 @@ jobs:
             else
               echo "calculator.sln file does not exist, skipping copy."
             fi
-      
+          
           elif [ "${{ github.event.inputs.applicationtype }}" == "springboot" ]; then
             echo "Copying Spring Boot code to the app repo."
             # Change to the correct directory (AppRepos without the extra "AppRepos")
             cd $GITHUB_WORKSPACE  # No need to change directory here either
-      
+          
             # Create the springboot folder if it doesn't exist
             mkdir -p ${{ github.event.inputs.targetrepo }}/springboot
             # Copy the Spring Boot code from AppRepos to the target repo
             cp -r ./springboot/* ${{ github.event.inputs.targetrepo }}/springboot/
-      
+          
           elif [ "${{ github.event.inputs.applicationtype }}" == "terraform" ]; then
             echo "Copying Terraform code to the app repo."
             # Change to the correct directory (AppRepos without the extra "AppRepos")
             cd $GITHUB_WORKSPACE  # No need to change directory here either
-      
+          
             # Create the terraform folder if it doesn't exist
             mkdir -p ${{ github.event.inputs.targetrepo }}/terraform
             # Copy the Terraform code from AppRepos to the target repo
@@ -198,7 +192,9 @@ jobs:
           git add .
           
           git diff --cached --quiet || git commit -m "Added application code from App repo"
-          git push origin main || echo "No changes to push."      
+          
+          # Use PAT for git push
+          git push https://${{ secrets.GIT_PAT }}@github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git main || echo "No changes to push."
 
       - name: Trigger pipeline in the application repo
         run: |
