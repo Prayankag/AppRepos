@@ -3,7 +3,7 @@ name: dotnet Build & Deploy in web App
 on:
   push:
     branches:
-      - main
+      - none
     paths:
       - 'calculator/**'  ### Trigger build on changes to the calculator folder
   workflow_dispatch:
