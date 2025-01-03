@@ -76,6 +76,9 @@ jobs:
         run: |
           # Override HOME to ensure global git config is applied correctly in the current job's temporary home directory
           export HOME="/home/runner/work/_temp/${{ github.run_id }}"
+          
+          # Create the necessary directory to avoid "No such file or directory" error
+          mkdir -p $HOME
 
           # Set up Git user and email globally
           git config --global user.name "nareshreddivari"
