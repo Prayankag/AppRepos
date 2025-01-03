@@ -40,15 +40,21 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
             -d '{
-              "name":"Hello-World","description":"This is your target repository","homepage":"https://github.com","private":false,"has_issues":true,"has_projects":true,"has_wiki":true}'
+              "name": "${{ github.event.inputs.targetrepo }}",
+              "description": "This is your target repository",
+              "homepage": "https://github.com",
+              "private": false,
+              "has_issues": true,
+              "has_projects": true,
+              "has_wiki": true
             }')
-
+      
             # Print the HTTP response code and body for debugging
             echo "Response Code: $response"
             echo "Response Body:"
             cat response.json
             
-            # Check if the creation was successful
+            # Check if the creation was successful (HTTP status code 201 means created)
             if [ "$response" -eq "201" ]; then
               echo "Repository ${{ github.event.inputs.targetrepo }} created successfully."
             else
@@ -58,7 +64,7 @@ jobs:
           else
             echo "Repository ${{ github.event.inputs.targetrepo }} already exists."
           fi
-
+          
       - name: Checkout AppRepos
         uses: actions/checkout@v2
         with:
