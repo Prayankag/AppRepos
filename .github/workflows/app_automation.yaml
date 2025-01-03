@@ -99,6 +99,7 @@ jobs:
             # Check if the calculator folder exists in the correct path and list its contents
             if [ -d "./calculator" ]; then
               echo "Listing contents of the calculator folder (before copy):"
+              mkdir -p ${{ github.event.inputs.targetrepo }}/calculator
               ls -l ./calculator
               cp -r ./calculator/* ${{ github.event.inputs.targetrepo }}/calculator/
             else
