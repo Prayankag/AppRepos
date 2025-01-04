@@ -83,11 +83,14 @@ jobs:
           from cryptography.hazmat.backends import default_backend
           import base64
           
-          secret = '${{ secrets.AZURE_CREDENTIALS }}'
-          public_key_pem = '''${{ steps.get_public_key.outputs.public_key }}'''
+          # Replace this with the actual secret, using triple quotes for multiline secrets if needed
+          secret = '''${{ secrets.AZURE_CREDENTIALS }}'''  # Ensure secret is passed correctly
+          
+          public_key_pem = '''${{ steps.get_public_key.outputs.public_key }}'''  # Public key for encryption
           
           public_key = rsa.PublicKey.from_pem(public_key_pem)
           
+          # Encrypt the secret with the public key
           encrypted = public_key.encrypt(
               secret.encode(),
               padding.OAEP(
@@ -96,10 +99,12 @@ jobs:
                   label=None
               )
           )
-      
+          
+          # Base64 encode the encrypted secret
           encrypted_secret = base64.b64encode(encrypted).decode('utf-8')
           print(encrypted_secret)
-              ")
+          ")  
+
               
               # Now add the secret using the GitHub API
               curl -X PUT \
