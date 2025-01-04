@@ -101,19 +101,19 @@ jobs:
           public_key_der = base64.b64decode(public_key_base64)
           
           # Convert the raw key into PEM format
-          public_key_pem = f'-----BEGIN PUBLIC KEY-----\\n{base64.b64encode(public_key_der).decode("utf-8")}\\n-----END PUBLIC KEY-----'
+          public_key_pem = '-----BEGIN PUBLIC KEY-----\\n' + base64.b64encode(public_key_der).decode('utf-8') + '\\n-----END PUBLIC KEY-----'
           
           # Debugging step: Print the public key to ensure it's correctly formatted
           print(f'Public Key PEM: {public_key_pem[:200]}...')  # Print only the first 200 characters for debugging
           
           # Load the public key using serialization.load_pem_public_key
           public_key = serialization.load_pem_public_key(
-              public_key_pem.encode('utf-8')  # Fix here: Ensure 'utf-8' is a string
+              public_key_pem.encode('utf-8')  # Ensure we are encoding it properly
           )
           
           # Encrypt the secret with the public key
           encrypted = public_key.encrypt(
-              secret.encode('utf-8'),  # Fix here: Ensure 'utf-8' is a string
+              secret.encode('utf-8'),  # Ensure we are encoding the secret correctly
               padding.OAEP(
                   mgf=padding.MGF1(algorithm=hashes.SHA256()),
                   algorithm=hashes.SHA256(),
