@@ -96,12 +96,19 @@ jobs:
 
           # The public key fetched from GitHub Secrets API
           public_key_pem = '''${{ steps.get_public_key.outputs.public_key }}'''  # Public key as fetched from GitHub API
-          
+
+          # Debugging step: Print the public key to ensure it's correctly fetched
+          print(f'Public Key PEM: {public_key_pem[:200]}...')  # Print only the first 200 characters for debugging
+
+          # Ensure the public key is properly formatted (PEM encoded)
+          if not public_key_pem.startswith('-----BEGIN PUBLIC KEY-----') or not public_key_pem.endswith('-----END PUBLIC KEY-----'):
+              raise ValueError('The public key format is invalid or incomplete.')
+
           # Load the public key using serialization.load_pem_public_key
           public_key = serialization.load_pem_public_key(
               public_key_pem.encode('utf-8')
           )
-          
+
           # Encrypt the secret with the public key
           encrypted = public_key.encrypt(
               secret.encode(),
@@ -111,10 +118,10 @@ jobs:
                   label=None
               )
           )
-          
+
           # Base64 encode the encrypted secret for safe transport
           encrypted_secret = base64.b64encode(encrypted).decode('utf-8')
-          print(encrypted_secret)
+          print(f'Encrypted Secret: {encrypted_secret}')
           " 
         env:
           AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
