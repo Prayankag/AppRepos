@@ -108,12 +108,12 @@ jobs:
           
           # Load the public key using serialization.load_pem_public_key
           public_key = serialization.load_pem_public_key(
-              public_key_pem.encode('utf-8')  # Ensure 'utf-8' is passed as a string
+              public_key_pem.encode("utf-8")  # Fix: Ensure utf-8 is used as a string
           )
           
           # Encrypt the secret with the public key
           encrypted = public_key.encrypt(
-              secret.encode('utf-8'),  # Ensure 'utf-8' is passed as a string
+              secret.encode("utf-8"),  # Fix: Ensure utf-8 is used as a string
               padding.OAEP(
                   mgf=padding.MGF1(algorithm=hashes.SHA256()),
                   algorithm=hashes.SHA256(),
@@ -122,9 +122,10 @@ jobs:
           )
           
           # Base64 encode the encrypted secret for safe transport
-          encrypted_secret = base64.b64encode(encrypted).decode('utf-8')
+          encrypted_secret = base64.b64encode(encrypted).decode("utf-8")
           print(f'Encrypted Secret: {encrypted_secret}')
-          " 
+          "
+ 
         env:
           AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
