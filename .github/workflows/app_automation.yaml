@@ -84,8 +84,8 @@ jobs:
           python3 -c "
           import os
           from cryptography.hazmat.primitives import hashes
-          from cryptography.hazmat.primitives.asymmetric import rsa
-          from cryptography.hazmat.primitives.asymmetric import padding
+          from cryptography.hazmat.primitives.asymmetric import rsa, padding
+          from cryptography.hazmat.primitives import serialization
           import base64
 
           # Get the secret from the environment variable
@@ -97,8 +97,10 @@ jobs:
           # The public key fetched from GitHub Secrets API
           public_key_pem = '''${{ steps.get_public_key.outputs.public_key }}'''  # Public key as fetched from GitHub API
           
-          # Load the public key using the RSAPublicKey class
-          public_key = rsa.RSAPublicKey.from_pem(public_key_pem.encode('utf-8'))
+          # Load the public key using serialization.load_pem_public_key
+          public_key = serialization.load_pem_public_key(
+              public_key_pem.encode('utf-8')
+          )
           
           # Encrypt the secret with the public key
           encrypted = public_key.encrypt(
