@@ -81,15 +81,22 @@ jobs:
 
       - name: Encrypt AZURE_CREDENTIALS and set it as a secret
         run: |
+          # Export the secret as an environment variable
+          echo "AZURE_CREDENTIALS=${{ secrets.AZURE_CREDENTIALS }}" >> $GITHUB_ENV
+          
           python3 -c "
+          import os
           from cryptography.hazmat.primitives import hashes
           from cryptography.hazmat.primitives.asymmetric import rsa
           from cryptography.hazmat.primitives.asymmetric import padding
           import base64
 
-          # The secret to encrypt (use the GitHub secret passed into the workflow)
-          secret = '${{ secrets.AZURE_CREDENTIALS }}'  # This will dynamically pass the secret from GitHub Secrets
-          
+          # Get the secret from the environment variable
+          secret = os.getenv('AZURE_CREDENTIALS')
+
+          if not secret:
+              raise ValueError('AZURE_CREDENTIALS is missing')
+
           # The public key fetched from GitHub Secrets API
           public_key_pem = '''${{ steps.get_public_key.outputs.public_key }}'''  # Public key as fetched from GitHub API
           
@@ -109,8 +116,7 @@ jobs:
           # Base64 encode the encrypted secret for safe transport
           encrypted_secret = base64.b64encode(encrypted).decode('utf-8')
           print(encrypted_secret)
-          "
-          
+          "          
       - name: Set GitHub Secret with encrypted AZURE_CREDENTIALS
         run: |
           curl -X PUT \
