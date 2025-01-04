@@ -108,12 +108,12 @@ jobs:
       
           # Load the public key using serialization.load_pem_public_key
           public_key = serialization.load_pem_public_key(
-              public_key_pem.encode('utf-8')
+              public_key_pem.encode('utf-8')  # Fix here: Ensure 'utf-8' is a string
           )
       
           # Encrypt the secret with the public key
           encrypted = public_key.encrypt(
-              secret.encode(),
+              secret.encode('utf-8'),  # Fix here: Ensure 'utf-8' is a string
               padding.OAEP(
                   mgf=padding.MGF1(algorithm=hashes.SHA256()),
                   algorithm=hashes.SHA256(),
