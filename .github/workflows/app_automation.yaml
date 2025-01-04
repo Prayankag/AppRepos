@@ -64,6 +64,50 @@ jobs:
           else
             echo "Repository ${{ github.event.inputs.targetrepo }} already exists."
           fi
+
+      - name: Get public key for secrets encryption
+        id: get_public_key
+        run: |
+          response=$(curl -s -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
+            https://api.github.com/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/public-key)
+          echo "::set-output name=key_id::$(echo $response | jq -r .key_id)"
+          echo "::set-output name=public_key::$(echo $response | jq -r .key)"
+
+      - name: Encrypt AZURE_CREDENTIALS and set it as a secret
+        run: |
+          # Encrypt the secret using the public key, replace the following with actual code to encrypt
+          encrypted_azure_credentials=$(python3 -c "
+          from cryptography.hazmat.primitives import hashes
+          from cryptography.hazmat.primitives.asymmetric import rsa
+          from cryptography.hazmat.primitives.asymmetric import padding
+          from cryptography.hazmat.backends import default_backend
+          import base64
+          
+          secret = '${{ secrets.AZURE_CREDENTIALS }}'
+          public_key_pem = '''${{ steps.get_public_key.outputs.public_key }}'''
+          
+          public_key = rsa.PublicKey.from_pem(public_key_pem)
+          
+          encrypted = public_key.encrypt(
+              secret.encode(),
+              padding.OAEP(
+                  mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                  algorithm=hashes.SHA256(),
+                  label=None
+              )
+          )
+      
+          encrypted_secret = base64.b64encode(encrypted).decode('utf-8')
+          print(encrypted_secret)
+              ")
+              
+              # Now add the secret using the GitHub API
+              curl -X PUT \
+                -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                https://api.github.com/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/AZURE_CREDENTIALS \
+                -d "{\"encrypted_value\":\"$encrypted_azure_credentials\",\"key_id\":\"${{ steps.get_public_key.outputs.key_id }}\"}"
+
       - name: Set up secrets for the new target repository
         run: |
           echo "Setting up secrets for the target repository..."
@@ -71,15 +115,16 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/user/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/AZURE_CREDENTIALS \
-            -d '{"encrypted_value":"${{ secrets.AZURE_CREDENTIALS }}","key_id":"<key-id>"}'
+            -d '{"encrypted_value":"${{ secrets.AZURE_CREDENTIALS }}","key_id":"${{ steps.get_public_key.outputs.key_id }}"}'
 
           curl -X PUT \
             -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/user/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/GITHUB_TOKEN \
-            -d '{"encrypted_value":"${{ secrets.GITHUB_TOKEN }}","key_id":"<key-id>"}'
+            -d '{"encrypted_value":"${{ secrets.GITHUB_TOKEN }}","key_id":"${{ steps.get_public_key.outputs.key_id }}"}'
 
           echo "Secrets set up completed."
+
       - name: Checkout AppRepos
         uses: actions/checkout@v2
         with:
@@ -208,6 +253,8 @@ jobs:
           
           git diff --cached --quiet || git commit -m "Added application code from App repo"
           
+          git push https://${{ secrets.GIT_PAT }}@github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git main || echo "No changes to push."
+
           # Use PAT for git push
           git push https://${{ secrets.GIT_PAT }}@github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git main || echo "No changes to push."
 
