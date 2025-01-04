@@ -3,7 +3,7 @@ name: springboot Build & Deploy in Web App
 on:
   push:
     branches:
-      - main
+      - none
     paths:
       - 'springboot/**'    # Monitor changes in 'springboot' folder
   workflow_dispatch:
