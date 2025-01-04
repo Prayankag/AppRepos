@@ -100,16 +100,24 @@ jobs:
           # Decode the base64 string to get the raw key
           public_key_der = base64.b64decode(public_key_base64)
           
+          # Check the length of the decoded key to debug its validity
+          print(f"Decoded Public Key Length: {len(public_key_der)}")
+          
           # Convert the raw key into PEM format
           public_key_pem = '-----BEGIN PUBLIC KEY-----\\n' + base64.b64encode(public_key_der).decode('utf-8') + '\\n-----END PUBLIC KEY-----'
           
           # Debugging step: Print the public key to ensure it's correctly formatted
           print(f'Public Key PEM: {public_key_pem[:200]}...')  # Print only the first 200 characters for debugging
           
-          # Load the public key using serialization.load_pem_public_key
-          public_key = serialization.load_pem_public_key(
-              public_key_pem.encode('utf-8')  # Ensure we are encoding it properly
-          )
+          try:
+              # Load the public key using serialization.load_pem_public_key
+              public_key = serialization.load_pem_public_key(
+                  public_key_pem.encode('utf-8')  # Ensure we are encoding it properly
+              )
+              print("Public Key successfully loaded.")
+          except Exception as e:
+              print(f"Error loading public key: {e}")
+              raise
           
           # Encrypt the secret with the public key
           encrypted = public_key.encrypt(
@@ -125,6 +133,7 @@ jobs:
           encrypted_secret = base64.b64encode(encrypted).decode('utf-8')
           print(f'Encrypted Secret: {encrypted_secret}')
           "
+
 
  
         env:
