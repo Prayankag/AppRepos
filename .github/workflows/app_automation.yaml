@@ -84,7 +84,7 @@ jobs:
           python3 -c "
           import os
           from cryptography.hazmat.primitives import hashes
-          from cryptography.hazmat.primitives.asymmetric import rsa, padding
+          from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding
           from cryptography.hazmat.primitives import serialization
           import base64
           
@@ -101,22 +101,22 @@ jobs:
           public_key_der = base64.b64decode(public_key_base64)
           
           # Check the length of the decoded key to debug its validity
-          print(f\"Decoded Public Key Length: {len(public_key_der)}\")
+          print(f"Decoded Public Key Length: {len(public_key_der)}")
           
           # Convert the raw key into PEM format
-          public_key_pem = '-----BEGIN PUBLIC KEY-----\\n' + base64.b64encode(public_key_der).decode('utf-8') + '\\n-----END PUBLIC KEY-----'
+          public_key_pem = '-----BEGIN PUBLIC KEY-----\n' + base64.b64encode(public_key_der).decode('utf-8') + '\n-----END PUBLIC KEY-----'
           
           # Debugging step: Print the public key to ensure it's correctly formatted
           print(f'Public Key PEM: {public_key_pem[:200]}...')  # Print only the first 200 characters for debugging
           
           try:
-              # Load the public key using serialization.load_pem_public_key
+              # Try loading it as an EC key (if that's the key type)
               public_key = serialization.load_pem_public_key(
                   public_key_pem.encode('utf-8')  # Ensure we are encoding it properly
               )
-              print(\"Public Key successfully loaded.\")
+              print("Public Key successfully loaded.")
           except Exception as e:
-              print(f\"Error loading public key: {e}\")
+              print(f"Error loading public key: {e}")
               raise
           
           # Encrypt the secret with the public key
@@ -132,7 +132,7 @@ jobs:
           # Base64 encode the encrypted secret for safe transport
           encrypted_secret = base64.b64encode(encrypted).decode('utf-8')
           print(f'Encrypted Secret: {encrypted_secret}')
-          "
+
         env:
           AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
