@@ -98,8 +98,8 @@ jobs:
 
   deploy-springboot-app-staging:
     runs-on: ubuntu-latest
-    needs: build-springboot-app
-    if: ${{ always() }}
+    needs: deploy-springboot-app-dev
+    if: ${{ success() }}
     environment:
       name: 'Staging'
       url: ${{ steps.deploy-to-webapp-staging.outputs.webapp-url }}
@@ -136,8 +136,8 @@ jobs:
 
   deploy-springboot-app-production:
     runs-on: ubuntu-latest
-    needs: build-springboot-app
-    if: ${{ always() }}
+    needs: deploy-springboot-app-staging
+    if: ${{ success() }}
     environment:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp-production.outputs.webapp-url }}
