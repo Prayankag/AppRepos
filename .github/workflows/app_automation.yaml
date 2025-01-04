@@ -73,16 +73,22 @@ jobs:
           echo "::set-output name=key_id::$(echo $response | jq -r .key_id)"
           echo "::set-output name=public_key::$(echo $response | jq -r .key)"
 
+      - name: Set up Python and Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip
+          python3 -m pip install cryptography
+
       - name: Encrypt AZURE_CREDENTIALS and set it as a secret
         run: |
+          python3 -c "
           from cryptography.hazmat.primitives import hashes
           from cryptography.hazmat.primitives.asymmetric import rsa
           from cryptography.hazmat.primitives.asymmetric import padding
-          from cryptography.hazmat.backends import default_backend
           import base64
-          
+
           # The secret to encrypt (use the GitHub secret passed into the workflow)
-          secret = '''${{ secrets.AZURE_CREDENTIALS }}'''  # This will dynamically pass the secret from GitHub Secrets
+          secret = '${{ secrets.AZURE_CREDENTIALS }}'  # This will dynamically pass the secret from GitHub Secrets
           
           # The public key fetched from GitHub Secrets API
           public_key_pem = '''${{ steps.get_public_key.outputs.public_key }}'''  # Public key as fetched from GitHub API
@@ -103,13 +109,15 @@ jobs:
           # Base64 encode the encrypted secret for safe transport
           encrypted_secret = base64.b64encode(encrypted).decode('utf-8')
           print(encrypted_secret)
-              
-              # Now add the secret using the GitHub API
-              curl -X PUT \
-                -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
-                -H "Accept: application/vnd.github.v3+json" \
-                https://api.github.com/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/AZURE_CREDENTIALS \
-                -d "{\"encrypted_value\":\"$encrypted_azure_credentials\",\"key_id\":\"${{ steps.get_public_key.outputs.key_id }}\"}"
+          "
+          
+      - name: Set GitHub Secret with encrypted AZURE_CREDENTIALS
+        run: |
+          curl -X PUT \
+            -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/AZURE_CREDENTIALS \
+            -d "{\"encrypted_value\":\"$encrypted_secret\",\"key_id\":\"${{ steps.get_public_key.outputs.key_id }}\"}"
 
       - name: Set up secrets for the new target repository
         run: |
@@ -187,7 +195,7 @@ jobs:
           git add .github/workflows/${{ github.event.inputs.applicationtype }}.yaml
           
           git diff --cached --quiet || git commit -m "Added ${{ github.event.inputs.applicationtype }}.yaml from App repo"
-          
+                    
           # Use PAT for git push
           git push https://${{ secrets.GIT_PAT }}@github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git main || echo "No changes to push."
 
