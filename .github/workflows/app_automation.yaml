@@ -30,7 +30,7 @@ jobs:
           echo "Checking if the repository ${{ github.event.inputs.targetrepo }} exists in ${{ github.event.inputs.orgname }}..."
           
           # Check if repository exists using GitHub API
-          repo_exists=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/user/repos)
+          repo_exists=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/user/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }})
           
           if [ "$repo_exists" != "200" ]; then
             echo "Repository doesn't exist. Creating new repository..."
@@ -64,7 +64,22 @@ jobs:
           else
             echo "Repository ${{ github.event.inputs.targetrepo }} already exists."
           fi
+      - name: Set up secrets for the new target repository
+        run: |
+          echo "Setting up secrets for the target repository..."
+          curl -X PUT \
+            -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/user/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/AZURE_CREDENTIALS \
+            -d '{"encrypted_value":"${{ secrets.AZURE_CREDENTIALS }}","key_id":"<key-id>"}'
 
+          curl -X PUT \
+            -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/user/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/GITHUB_TOKEN \
+            -d '{"encrypted_value":"${{ secrets.GITHUB_TOKEN }}","key_id":"<key-id>"}'
+
+          echo "Secrets set up completed."
       - name: Checkout AppRepos
         uses: actions/checkout@v2
         with:
