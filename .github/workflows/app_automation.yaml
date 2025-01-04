@@ -81,9 +81,6 @@ jobs:
 
       - name: Encrypt AZURE_CREDENTIALS and set it as a secret
         run: |
-          # Export the secret as an environment variable
-          echo "AZURE_CREDENTIALS=${{ secrets.AZURE_CREDENTIALS }}" >> $GITHUB_ENV
-          
           python3 -c "
           import os
           from cryptography.hazmat.primitives import hashes
@@ -116,7 +113,10 @@ jobs:
           # Base64 encode the encrypted secret for safe transport
           encrypted_secret = base64.b64encode(encrypted).decode('utf-8')
           print(encrypted_secret)
-          "          
+          " 
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+          
       - name: Set GitHub Secret with encrypted AZURE_CREDENTIALS
         run: |
           curl -X PUT \
