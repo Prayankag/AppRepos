@@ -1,4 +1,4 @@
-name: dotnet Build & Deploy in Web App
+name: dotnet Build & Deploy in web App
 
 on:
   push:
@@ -18,21 +18,8 @@ permissions:
   contents: read
 
 jobs:
-  # Common Azure Setup Job
-  azure-login:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup Azure Login via Managed Identity
-        uses: azure/login@v1
-        with:
-          client-id: 'a2d89136-b086-4755-9f98-af856c2d8c30'  # Hardcoded Client ID for the managed identity
-          tenant-id: '13085c86-4bcb-460a-a6f0-b373421c6323'  # Hardcoded Tenant ID
-          subscription-id: 'f936a180-7b93-4203-8faa-f376529bd4f8'  # Hardcoded Subscription ID
-          client-secret: 'QEt8Q~el5WQ8JWv56IsRMvM5mSJeMHsflwyEJbQ7'
-
   build:
     runs-on: ubuntu-latest
-    needs: azure-login
     outputs:
       artifact-path: ${{ steps.upload-artifact.outputs.artifact-path }}
     
@@ -56,7 +43,7 @@ jobs:
       - name: Run unit tests
         run: |
           dotnet test calculator/*.csproj --configuration Release
-
+          
       - name: Prepare SonarQube Analysis
         run: |
           echo "Simulating SonarQube Preparation..."
@@ -90,6 +77,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Copy Azure Credentials Secret to Another Repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -X PUT -H "Authorization: Bearer $GITHUB_TOKEN" \
+          -d '{"encrypted_value": "${{ secrets.AZURE_CREDENTIALS }}"}' \
+          "https://api.github.com/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/AZURE_CREDENTIALS"
+
+      - name: Setup Azure Login using Service Principal
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
@@ -123,10 +123,24 @@ jobs:
     if: ${{ success() }}
     environment:
       name: staging
+      #url: https://staging.com  # Optional: URL to the staging environment for notification
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
+      - name: Copy Azure Credentials Secret to Another Repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -X PUT -H "Authorization: Bearer $GITHUB_TOKEN" \
+          -d '{"encrypted_value": "${{ secrets.AZURE_CREDENTIALS }}"}' \
+          "https://api.github.com/repos/your-org/target-repo/actions/secrets/AZURE_CREDENTIALS"
+
+      - name: Setup Azure Login using Service Principal
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Request Approval to Deploy to Staging
         uses: github-actions/approval-action@v2
@@ -144,7 +158,7 @@ jobs:
       - name: Deploy to Staging Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ secrets.AZURE_STAGING_WEBAPP_NAME }}
+          app-name: ${{ secrets.AZURE_STAGING_WEBAPP_NAME }}  # Use manual input or fall back to secret
           package: ./drop.zip  # Correct path to the downloaded zip file
 
       - name: Validate Staging Deployment
@@ -168,10 +182,24 @@ jobs:
     if: ${{ success() }}
     environment:
       name: production
+      #url: https://production.com  # Optional: URL to the production environment for notification
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
+      - name: Copy Azure Credentials Secret to Another Repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -X PUT -H "Authorization: Bearer $GITHUB_TOKEN" \
+          -d '{"encrypted_value": "${{ secrets.AZURE_CREDENTIALS }}"}' \
+          "https://api.github.com/repos/your-org/target-repo/actions/secrets/AZURE_CREDENTIALS"
+
+      - name: Setup Azure Login using Service Principal
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Request Approval to Deploy to Production
         uses: github-actions/approval-action@v2
@@ -189,7 +217,7 @@ jobs:
       - name: Deploy to Production Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ secrets.AZURE_PRODUCTION_WEBAPP_NAME }}
+          appname: ${{ secrets.AZURE_PRODUCTION_WEBAPP_NAME }}  # Use manual input or fall back to secret
           package: ./drop.zip  # Correct path to the downloaded zip file
 
       - name: Validate Production Deployment
