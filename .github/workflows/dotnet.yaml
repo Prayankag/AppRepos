@@ -3,34 +3,41 @@ name: dotnet Build & Deploy in Web App
 on:
   push:
     branches:
-      - none  # No automatic triggers from pushes; only manual (via workflow_dispatch)
+      - none
+    paths:
+      - 'calculator/**'  ### Trigger build on changes to the calculator folder
   workflow_dispatch:
     inputs:
       appname:
         description: 'The Azure Web App name for deployment'
         required: true
         type: string
-      targetrepo:
-        description: 'The target repository to trigger the build'
-        required: true
-        type: string  # Assuming this is a string that contains the target repository's name
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
+  # Common Azure Setup Job
+  azure-login:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Azure Login via Managed Identity
+        uses: azure/login@v1
+        with:
+          client-id: 'your-client-id'  # Hardcoded Client ID for the managed identity
+          tenant-id: 'your-tenant-id'  # Hardcoded Tenant ID
+          subscription-id: 'your-subscription-id'  # Hardcoded Subscription ID
+
   build:
     runs-on: ubuntu-latest
+    needs: azure-login
     outputs:
       artifact-path: ${{ steps.upload-artifact.outputs.artifact-path }}
     
     steps:
-      - name: Checkout the target repository
+      - name: Checkout code
         uses: actions/checkout@v2
-        with:
-          repository: ${{ github.event.inputs.targetrepo }}  # Checkout the target repository dynamically based on input
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v3
@@ -48,7 +55,7 @@ jobs:
       - name: Run unit tests
         run: |
           dotnet test calculator/*.csproj --configuration Release
-          
+
       - name: Prepare SonarQube Analysis
         run: |
           echo "Simulating SonarQube Preparation..."
@@ -79,17 +86,9 @@ jobs:
     needs: build
     if: ${{ always() }}  # This ensures it always runs after the build job.
     steps:
-      - name: Checkout code from the target repository
+      - name: Checkout code
         uses: actions/checkout@v2
-        with:
-          repository: ${{ github.event.inputs.targetrepo }}  # Checkout the target repository dynamically
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Azure Login using Service Principal
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
@@ -123,19 +122,10 @@ jobs:
     if: ${{ success() }}
     environment:
       name: staging
-      #url: https://staging.com  # Optional: URL to the staging environment for notification
 
     steps:
-      - name: Checkout code from the target repository
+      - name: Checkout code
         uses: actions/checkout@v2
-        with:
-          repository: ${{ github.event.inputs.targetrepo }}  # Checkout the target repository dynamically
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Azure Login using Service Principal
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Request Approval to Deploy to Staging
         uses: github-actions/approval-action@v2
@@ -153,7 +143,7 @@ jobs:
       - name: Deploy to Staging Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ secrets.AZURE_STAGING_WEBAPP_NAME }}  # Use manual input or fall back to secret
+          app-name: ${{ secrets.AZURE_STAGING_WEBAPP_NAME }}
           package: ./drop.zip  # Correct path to the downloaded zip file
 
       - name: Validate Staging Deployment
@@ -177,19 +167,10 @@ jobs:
     if: ${{ success() }}
     environment:
       name: production
-      #url: https://production.com  # Optional: URL to the production environment for notification
 
     steps:
-      - name: Checkout code from the target repository
+      - name: Checkout code
         uses: actions/checkout@v2
-        with:
-          repository: ${{ github.event.inputs.targetrepo }}  # Checkout the target repository dynamically
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Azure Login using Service Principal
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Request Approval to Deploy to Production
         uses: github-actions/approval-action@v2
@@ -207,7 +188,7 @@ jobs:
       - name: Deploy to Production Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ secrets.AZURE_PRODUCTION_WEBAPP_NAME }}  # Use manual input or fall back to secret
+          app-name: ${{ secrets.AZURE_PRODUCTION_WEBAPP_NAME }}
           package: ./drop.zip  # Correct path to the downloaded zip file
 
       - name: Validate Production Deployment
