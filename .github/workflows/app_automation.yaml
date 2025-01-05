@@ -30,7 +30,7 @@ jobs:
           echo "Checking if the repository ${{ github.event.inputs.targetrepo }} exists in ${{ github.event.inputs.orgname }}..."
           
           # Check if repository exists using GitHub API
-          repo_exists=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/user/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }})
+          repo_exists=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/user/repos)
           
           if [ "$repo_exists" != "200" ]; then
             echo "Repository doesn't exist. Creating new repository..."
@@ -64,102 +64,6 @@ jobs:
           else
             echo "Repository ${{ github.event.inputs.targetrepo }} already exists."
           fi
-
-      - name: Get public key for secrets encryption
-        id: get_public_key
-        run: |
-          response=$(curl -s -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
-            https://api.github.com/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/public-key)
-          echo "::set-output name=key_id::$(echo $response | jq -r .key_id)"
-          echo "::set-output name=public_key::$(echo $response | jq -r .key)"
-
-      - name: Set up Python and Install Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-pip
-          python3 -m pip install cryptography
-
-      - name: Encrypt AZURE_CREDENTIALS and set it as a secret
-        run: |
-          python3 -c "
-          import os
-          from cryptography.hazmat.primitives import hashes
-          from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding
-          from cryptography.hazmat.primitives import serialization
-          import base64
-          
-          # Get the secret from the environment variable
-          secret = os.getenv('AZURE_CREDENTIALS')
-          
-          if not secret:
-              raise ValueError('AZURE_CREDENTIALS is missing')
-          
-          # The public key fetched from GitHub Secrets API (base64 encoded)
-          public_key_base64 = '''0mayD/kIjIewzlscxkMK8hSgpNqr4U5LDSh5hzj8ulc='''  # Base64 public key
-          
-          # Decode the base64 string to get the raw key
-          public_key_der = base64.b64decode(public_key_base64)
-          
-          # Check the length of the decoded key to debug its validity
-          print(f"Decoded Public Key Length: {len(public_key_der)}")
-          
-          # Convert the raw key into PEM format
-          public_key_pem = '-----BEGIN PUBLIC KEY-----\n' + base64.b64encode(public_key_der).decode('utf-8') + '\n-----END PUBLIC KEY-----'
-          
-          # Debugging step: Print the public key to ensure it's correctly formatted
-          print(f'Public Key PEM: {public_key_pem[:200]}...')  # Print only the first 200 characters for debugging
-          
-          try:
-              # Try loading it as an EC key (if that's the key type)
-              public_key = serialization.load_pem_public_key(
-                  public_key_pem.encode('utf-8')  # Ensure we are encoding it properly
-              )
-              print("Public Key successfully loaded.")
-          except Exception as e:
-              print(f"Error loading public key: {e}")
-              raise
-          
-          # Encrypt the secret with the public key
-          encrypted = public_key.encrypt(
-              secret.encode('utf-8'),  # Ensure we are encoding the secret correctly
-              padding.OAEP(
-                  mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                  algorithm=hashes.SHA256(),
-                  label=None
-              )
-          )
-          
-          # Base64 encode the encrypted secret for safe transport
-          encrypted_secret = base64.b64encode(encrypted).decode('utf-8')
-          print(f'Encrypted Secret: {encrypted_secret}')
-
-        env:
-          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Set GitHub Secret with encrypted AZURE_CREDENTIALS
-        run: |
-          curl -X PUT \
-            -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/AZURE_CREDENTIALS \
-            -d "{\"encrypted_value\":\"$encrypted_secret\",\"key_id\":\"${{ steps.get_public_key.outputs.key_id }}\"}"
-
-      - name: Set up secrets for the new target repository
-        run: |
-          echo "Setting up secrets for the target repository..."
-          curl -X PUT \
-            -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/user/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/AZURE_CREDENTIALS \
-            -d '{"encrypted_value":"${{ secrets.AZURE_CREDENTIALS }}","key_id":"${{ steps.get_public_key.outputs.key_id }}"}'
-
-          curl -X PUT \
-            -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/user/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/GITHUB_TOKEN \
-            -d '{"encrypted_value":"${{ secrets.GITHUB_TOKEN }}","key_id":"${{ steps.get_public_key.outputs.key_id }}"}'
-
-          echo "Secrets set up completed."
 
       - name: Checkout AppRepos
         uses: actions/checkout@v2
@@ -220,7 +124,7 @@ jobs:
           git add .github/workflows/${{ github.event.inputs.applicationtype }}.yaml
           
           git diff --cached --quiet || git commit -m "Added ${{ github.event.inputs.applicationtype }}.yaml from App repo"
-                    
+          
           # Use PAT for git push
           git push https://${{ secrets.GIT_PAT }}@github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git main || echo "No changes to push."
 
@@ -289,8 +193,6 @@ jobs:
           
           git diff --cached --quiet || git commit -m "Added application code from App repo"
           
-          git push https://${{ secrets.GIT_PAT }}@github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git main || echo "No changes to push."
-
           # Use PAT for git push
           git push https://${{ secrets.GIT_PAT }}@github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git main || echo "No changes to push."
 
