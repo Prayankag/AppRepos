@@ -25,9 +25,9 @@ jobs:
       - name: Setup Azure Login via Managed Identity
         uses: azure/login@v1
         with:
-          client-id: 'your-client-id'  # Hardcoded Client ID for the managed identity
-          tenant-id: 'your-tenant-id'  # Hardcoded Tenant ID
-          subscription-id: 'your-subscription-id'  # Hardcoded Subscription ID
+          client-id: 'a2d89136-b086-4755-9f98-af856c2d8c30'  # Hardcoded Client ID for the managed identity
+          tenant-id: '13085c86-4bcb-460a-a6f0-b373421c6323'  # Hardcoded Tenant ID
+          subscription-id: 'f936a180-7b93-4203-8faa-f376529bd4f8'  # Hardcoded Subscription ID
 
   build:
     runs-on: ubuntu-latest
