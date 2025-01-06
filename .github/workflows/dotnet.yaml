@@ -76,7 +76,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
+        
+      - name: Check secret value
+        run: echo "My secret is ${{ secrets.AZURE_CREDENTIALS }}"
+      
       - name: Setup Azure Login using Service Principal
         uses: azure/login@v1
         with:
