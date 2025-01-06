@@ -161,38 +161,50 @@ jobs:
       - name: Get public key for target repo
         id: get_public_key
         run: |
-          # Fetch the public key from GitHub API
-          response=$(curl -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
-            -X GET "https://api.github.com/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/public-key")
-          
-          echo "API Response: $response"  # Debugging line to check the response content
-          
-          # Extract public key and key_id
-          public_key=$(echo "$response" | jq -r '.key')
-          key_id=$(echo "$response" | jq -r '.key_id')
-          
-          # Check if public_key and key_id are retrieved correctly
-          echo "Public Key: $public_key"  # Debugging line
-          echo "Key ID: $key_id"  # Debugging line
-          
+          retry_count=0
+          max_retries=5
+          delay=60  # Delay in seconds before retrying
+      
+          while [ $retry_count -lt $max_retries ]; do
+            # Fetch the public key from GitHub API
+            response=$(curl -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
+              -X GET "https://api.github.com/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/public-key")
+            
+            echo "API Response: $response"  # Debugging line to check the response content
+      
+            # Check if rate limit exceeded
+            if [[ $(echo "$response" | jq -r '.message') == "API rate limit exceeded"* ]]; then
+              echo "Rate limit exceeded, waiting for $delay seconds before retrying."
+              sleep $delay
+              retry_count=$((retry_count + 1))
+            else
+              # Extract public key and key_id
+              public_key=$(echo "$response" | jq -r '.key')
+              key_id=$(echo "$response" | jq -r '.key_id')
+              break
+            fi
+          done
+      
+          if [ -z "$public_key" ] || [ -z "$key_id" ]; then
+            echo "Error: Could not retrieve public key after retries."
+            exit 1
+          fi
+      
           # Store the public key and key_id as environment variables
           echo "public_key=$public_key" >> $GITHUB_ENV
           echo "key_id=$key_id" >> $GITHUB_ENV
-
+          echo "Public Key: $public_key"  # Debugging line
+          echo "Key ID: $key_id"  # Debugging line
+      
+      # Step: Encrypt Azure Credentials
       - name: Encrypt Azure Credentials
         id: encrypt_azure_credentials
         run: |
-          # Check if public_key is empty
-          # if [ -z "$public_key" ]; then
-          #   echo "Error: Public key is empty."
-          #   exit 1
-          # fi
-
           if [ -z "$public_key" ] || [ -z "$key_id" ]; then
-          echo "Error: Public key or Key ID not found in API response."
-          exit 1
+            echo "Error: Public key or Key ID not found in API response."
+            exit 1
           fi
-
+      
           # Create the public key file in PEM format
           echo "-----BEGIN PUBLIC KEY-----" > public_key.pem
           
@@ -203,7 +215,6 @@ jobs:
           openssl rsa -in decoded_public_key.bin -inform DER -pubin -out public_key.pem
           
           echo "-----END PUBLIC KEY-----" >> public_key.pem
-
           # Verify the public key is correctly formatted
           cat public_key.pem
           
@@ -214,13 +225,14 @@ jobs:
             "tenantId": "13085c86-4bcb-460a-a6f0-b373421c6323",
             "clientId": "a2d89136-b086-4755-9f98-af856c2d8c30"
           }'
-          
+      
           # Encrypt the Azure credentials using the public key
           encrypted_value=$(echo -n "$azure_credentials" | openssl pkeyutl -encrypt -inkey public_key.pem -pubin | base64)
           
           # Output the encrypted value to the environment variable
           echo "encrypted_value=$encrypted_value" >> $GITHUB_ENV
           echo "key_id=$key_id" >> $GITHUB_ENV
+
 
       - name: Trigger pipeline in the application repo
         run: |
