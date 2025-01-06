@@ -197,36 +197,6 @@ jobs:
           git push https://${{ secrets.GIT_PAT }}@github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git main || echo "No changes to push."
 
       # Step: Get the encrypted secret from AppRepos
-      name: Create pipeline in application repo
-
-on:
-  workflow_dispatch:
-    inputs:
-      orgname:
-        description: 'The name of the organization repository'
-        required: true
-        type: string
-      targetrepo:
-        description: 'The name of the target repository for triggering workflows'
-        required: true
-        type: string
-      applicationtype:
-        description: 'The Application type for deployment (dotnet, springboot, terraform)'
-        required: true
-        type: string
-      appname:
-        description: 'The Azure Web App name for deployment'
-        required: true
-        type: string
-
-jobs:
-  trigger-workflow:
-    runs-on: ubuntu-latest
-
-    steps:
-      # Other steps for creating target repo, checking out, etc.
-
-      # Step 1: Get the public key for the target repo
       - name: Get public key for target repo
         id: get_public_key
         run: |
