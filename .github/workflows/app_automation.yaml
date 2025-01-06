@@ -178,9 +178,15 @@ jobs:
         run: |
           # Create the public key file in PEM format
           echo "-----BEGIN PUBLIC KEY-----" > public_key.pem
-          echo "$public_key" | base64 --decode >> public_key.pem
-          echo "-----END PUBLIC KEY-----" >> public_key.pem
           
+          # Decode and append the public key into PEM format
+          echo "$public_key" | base64 --decode > decoded_public_key.bin
+          
+          # Convert decoded binary key to PEM format and append it
+          openssl rsa -in decoded_public_key.bin -inform DER -pubin -out public_key.pem
+          
+          echo "-----END PUBLIC KEY-----" >> public_key.pem
+
           # Verify the public key is correctly formatted
           cat public_key.pem
 
