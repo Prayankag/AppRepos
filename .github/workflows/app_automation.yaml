@@ -178,7 +178,7 @@ jobs:
         run: |
           # Create the public key file in PEM format
           echo "-----BEGIN PUBLIC KEY-----" > public_key.pem
-          echo "$public_key" | base64 -d >> public_key.pem
+          echo "$public_key" | base64 --decode >> public_key.pem
           echo "-----END PUBLIC KEY-----" >> public_key.pem
           
           # Verify the public key is correctly formatted
