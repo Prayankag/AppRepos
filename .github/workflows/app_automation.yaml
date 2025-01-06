@@ -28,7 +28,9 @@ jobs:
       - name: Create target repository if it doesn't exist
         run: |
           echo "Checking if the repository ${{ github.event.inputs.targetrepo }} exists in ${{ github.event.inputs.orgname }}..."
+          
           repo_exists=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/user/repos)
+          
           if [ "$repo_exists" != "200" ]; then
             echo "Repository doesn't exist. Creating new repository..."
             response=$(curl -s -w "%{http_code}" -o response.json -X POST https://api.github.com/user/repos \
@@ -43,9 +45,11 @@ jobs:
               "has_projects": false,
               "has_wiki": false
             }')
+      
             echo "Response Code: $response"
             echo "Response Body:"
             cat response.json
+            
             if [ "$response" -eq "201" ]; then
               echo "Repository ${{ github.event.inputs.targetrepo }} created successfully."
             else
@@ -101,6 +105,7 @@ jobs:
           echo "Copying the application workflow YAML to the app repo."
           cp .github/workflows/${{ github.event.inputs.applicationtype }}.yaml ${{ github.event.inputs.targetrepo }}/.github/workflows/
           git diff --exit-code || echo "Changes detected, committing."
+          
           cd ${{ github.event.inputs.targetrepo }}
           git config --global user.email "naresh.reddivari@valuemomentum.com"
           git config --global user.name "nareshreddivari"
@@ -144,6 +149,7 @@ jobs:
           fi
           
           git diff --exit-code || echo "Changes detected, committing."
+          
           cd ${{ github.event.inputs.targetrepo }}
           git config --global user.email "naresh.reddivari@valuemomentum.com"
           git config --global user.name "nareshreddivari"
@@ -166,13 +172,11 @@ jobs:
       - name: Encrypt Azure Credentials
         id: encrypt_azure_credentials
         run: |
-          # Encrypt Azure credentials using the fetched public key
-          public_key=${{ env.public_key }}
-          key_id=${{ env.key_id }}
-      
-          # Decode the public key into a .pem file
-          echo "$public_key" | base64 -d > public_key.pem
-      
+          # Decode the public key into a PEM file format
+          echo "-----BEGIN PUBLIC KEY-----" > public_key.pem
+          echo "$public_key" | base64 -d >> public_key.pem
+          echo "-----END PUBLIC KEY-----" >> public_key.pem
+
           # Define the Azure credentials to encrypt
           azure_credentials='{
             "clientSecret": "QEt8Q~el5WQ8JWv56IsRMvM5mSJeMHsflwyEJbQ7",
@@ -180,10 +184,10 @@ jobs:
             "tenantId": "13085c86-4bcb-460a-a6f0-b373421c6323",
             "clientId": "a2d89136-b086-4755-9f98-af856c2d8c30"
           }'
-      
+          
           # Encrypt the Azure credentials using the public key
           encrypted_value=$(echo -n "$azure_credentials" | openssl pkeyutl -encrypt -inkey public_key.pem -pubin | base64)
-      
+          
           # Output the encrypted value to the environment variable
           echo "encrypted_value=$encrypted_value" >> $GITHUB_ENV
           echo "key_id=$key_id" >> $GITHUB_ENV
