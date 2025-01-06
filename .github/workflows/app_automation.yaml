@@ -29,13 +29,10 @@ jobs:
         run: |
           echo "Checking if the repository ${{ github.event.inputs.targetrepo }} exists in ${{ github.event.inputs.orgname }}..."
           
-          # Check if repository exists using GitHub API
           repo_exists=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/user/repos)
           
           if [ "$repo_exists" != "200" ]; then
             echo "Repository doesn't exist. Creating new repository..."
-            
-            # Creating new repository via GitHub API
             response=$(curl -s -w "%{http_code}" -o response.json -X POST https://api.github.com/user/repos \
             -H "Accept: application/vnd.github.v3+json" \
             -H "Authorization: Bearer ${{ secrets.GIT_PAT }}" \
@@ -49,12 +46,10 @@ jobs:
               "has_wiki": false
             }')
       
-            # Print the HTTP response code and body for debugging
             echo "Response Code: $response"
             echo "Response Body:"
             cat response.json
             
-            # Check if the creation was successful (HTTP status code 201 means created)
             if [ "$response" -eq "201" ]; then
               echo "Repository ${{ github.event.inputs.targetrepo }} created successfully."
             else
@@ -74,23 +69,16 @@ jobs:
 
       - name: Clone the target repository
         run: |
-          # Ensure that git is available
           git --version
-
-          # Clone the target repository into the directory you want
           git clone https://github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git
-          
-          # Navigate into the cloned repository
           cd ${{ github.event.inputs.targetrepo }}
-          
-          # List the contents of the cloned repository
           echo "Contents of the cloned repository:"
           ls -R .
 
       - name: List files in the app repo
         run: |
           echo "Listing files in the app repo"
-          ls -R .  # List all files in the current directory (root of the checked-out repo)
+          ls -R .
 
       - name: List files in the app repo's workflows directory
         run: |
@@ -122,30 +110,18 @@ jobs:
           git config --global user.email "naresh.reddivari@valuemomentum.com"
           git config --global user.name "nareshreddivari"
           git add .github/workflows/${{ github.event.inputs.applicationtype }}.yaml
-          
           git diff --cached --quiet || git commit -m "Added ${{ github.event.inputs.applicationtype }}.yaml from App repo"
-          
-          # Use PAT for git push
           git push https://${{ secrets.GIT_PAT }}@github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git main || echo "No changes to push."
 
       - name: Copy application code to the app repo (based on application type)
         run: |
-          # Ensure the folder path is created in the target repository
           if [ "${{ github.event.inputs.applicationtype }}" == "dotnet" ]; then
             echo "Copying .NET (calculator) code to the app repo."
-            
-            # Debug: Check the current working directory
             echo "Current directory:"
             pwd
-      
-            # Debug: List contents of the current directory
             echo "Listing contents of the current directory:"
             ls -l
-          
-            # Ensure you're in the correct directory (AppReposRepos is already included in GITHUB_WORKSPACE)
-            cd $GITHUB_WORKSPACE  # No need to go into AppReposRepos again since it's already in the path
-      
-            # Check if the calculator folder exists in the correct path and list its contents
+            cd $GITHUB_WORKSPACE
             if [ -d "./calculator" ]; then
               echo "Listing contents of the calculator folder (before copy):"
               mkdir -p ${{ github.event.inputs.targetrepo }}/calculator
@@ -154,33 +130,21 @@ jobs:
             else
               echo "calculator folder does not exist in the expected location. Skipping copy."
             fi
-      
-            # Check if calculator.sln file exists in AppRepos root and copy it
             if [ -f "./calculator.sln" ]; then
               echo "calculator.sln file exists, copying to app repo."
               cp ./calculator.sln ${{ github.event.inputs.targetrepo }}/calculator.sln
             else
               echo "calculator.sln file does not exist, skipping copy."
             fi
-          
           elif [ "${{ github.event.inputs.applicationtype }}" == "springboot" ]; then
             echo "Copying Spring Boot code to the app repo."
-            # Change to the correct directory (AppRepos without the extra "AppRepos")
-            cd $GITHUB_WORKSPACE  # No need to change directory here either
-          
-            # Create the springboot folder if it doesn't exist
+            cd $GITHUB_WORKSPACE
             mkdir -p ${{ github.event.inputs.targetrepo }}/springboot
-            # Copy the Spring Boot code from AppRepos to the target repo
             cp -r ./springboot/* ${{ github.event.inputs.targetrepo }}/springboot/
-          
           elif [ "${{ github.event.inputs.applicationtype }}" == "terraform" ]; then
             echo "Copying Terraform code to the app repo."
-            # Change to the correct directory (AppRepos without the extra "AppRepos")
-            cd $GITHUB_WORKSPACE  # No need to change directory here either
-          
-            # Create the terraform folder if it doesn't exist
+            cd $GITHUB_WORKSPACE
             mkdir -p ${{ github.event.inputs.targetrepo }}/terraform
-            # Copy the Terraform code from AppRepos to the target repo
             cp -r ./terraform/* ${{ github.event.inputs.targetrepo }}/terraform/
           fi
           
@@ -190,13 +154,10 @@ jobs:
           git config --global user.email "naresh.reddivari@valuemomentum.com"
           git config --global user.name "nareshreddivari"
           git add .
-          
           git diff --cached --quiet || git commit -m "Added application code from App repo"
-          
-          # Use PAT for git push
           git push https://${{ secrets.GIT_PAT }}@github.com/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}.git main || echo "No changes to push."
 
-      # Step: Get the encrypted secret from AppRepos
+      # Step: Get the public key for target repo
       - name: Get public key for target repo
         id: get_public_key
         run: |
@@ -211,7 +172,6 @@ jobs:
       - name: Encrypt Azure Credentials
         id: encrypt_azure_credentials
         run: |
-          # Prepare the Azure credentials JSON
           azure_credentials='{
             "clientSecret": "QEt8Q~el5WQ8JWv56IsRMvM5mSJeMHsflwyEJbQ7",
             "subscriptionId": "f936a180-7b93-4203-8faa-f376529bd4f8",
@@ -219,10 +179,10 @@ jobs:
             "clientId": "a2d89136-b086-4755-9f98-af856c2d8c30"
           }'
 
-          # Encrypt the Azure credentials using the public key
-          encrypted_value=$(echo -n "$azure_credentials" | \
-            openssl pkeyutl -encrypt -inkey <(echo "$public_key" | base64 -d) -pubin | base64)
-          
+          # Save public key to file and use it for encryption
+          echo "$public_key" | base64 -d > public_key.pem
+          encrypted_value=$(echo -n "$azure_credentials" | openssl pkeyutl -encrypt -inkey public_key.pem -pubin | base64)
+
           echo "encrypted_value=$encrypted_value" >> $GITHUB_ENV
 
       # Step 3: Set the Azure Credentials in the target repository
@@ -232,7 +192,6 @@ jobs:
             -X PUT "https://api.github.com/repos/${{ github.event.inputs.orgname }}/${{ github.event.inputs.targetrepo }}/actions/secrets/AZURE_CREDENTIALS" \
             -d '{"encrypted_value": "${{ env.encrypted_value }}", "key_id": "${{ env.key_id }}"}'
 
-      
       - name: Trigger pipeline in the application repo
         run: |
           echo "Triggering workflow in target application repo."
